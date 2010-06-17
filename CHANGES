@@ -1,0 +1,9 @@
+Revision history for Perl extension Clobber.
+
+0.02  2010-06-16
+
+      Rough draft with basic functionality
+
+0.01  Wed Jun 16 20:20:36 2010
+	- original version; created by h2xs 1.23 with options
+		-X clobber
