@@ -2,7 +2,7 @@ package clobber;
 use Carp;
 use Fcntl;
 use strict; no strict 'refs';
-use vars '$VERSION'; $VERSION = 0.03;
+use vars '$VERSION'; $VERSION = 0.04;
 eval "require Term::ReadKey";
 
 sub unimport { #no strict 'refs';
@@ -56,13 +56,12 @@ sub OPEN(*;$@){
 
 sub SYSOPEN(*$$;$){
   my($handle, $file, $mode, $perms) = @_;
-  $perms ||= 0777;
 
   #We don't use O_EXCL because sysopen's failure is not trappable
   prompt($file) if -e $file && $mode&(O_WRONLY|O_RDWR|O_TRUNC);
 
   #no strict 'refs';
-  CORE::sysopen(*{caller(0) . '::' . $handle}, $file, $mode, $perms);
+  CORE::sysopen(*{caller(0) . '::' . $handle}, $file, $mode, $perms||0666);
 }
 
 sub prompt{
