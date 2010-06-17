@@ -1,10 +1,13 @@
 package clobber;
 use Carp;
+use Fcntl;
 use strict; no strict 'refs';
-use vars '$VERSION'; $VERSION = 0.02;
+use vars '$VERSION'; $VERSION = 0.03;
+eval "require Term::ReadKey";
 
 sub unimport { #no strict 'refs';
-  *{'CORE::GLOBAL::open'} = \&customopen unless exists($^H{clobber});
+  *{'CORE::GLOBAL::open'}    = \&OPEN    unless exists($^H{clobber});
+  *{'CORE::GLOBAL::sysopen'} = \&SYSOPEN unless exists($^H{clobber});
   $^H{clobber} = $ENV{'clobber.pm'} || 0;
 }
 
@@ -13,7 +16,7 @@ sub import {
 }
 
 
-sub customopen(*;$@){
+sub OPEN(*;$@){
   my($handle, $mode, $file) = @_;
   my($testmode, $pipein) = $mode;
 
@@ -43,10 +46,7 @@ sub customopen(*;$@){
     ($testmode, $file) = @_[1,2];
   }
 
-  if( !(caller 0)[10]->{clobber} && -e $file &&
-      $testmode =~ /\+[<>](?!>)|^>(?!&|>)/ ){
-    croak "$file: File exists.";
-  }
+  prompt($file) if -e $file && $testmode =~ /\+[<>](?!>)|^>(?!&|>)/;
 
   splice(@_, 0, 3);
 
@@ -54,10 +54,40 @@ sub customopen(*;$@){
   CORE::open(*{caller(0) . '::' . $handle}, $testmode, $file, @_);
 }
 
+sub SYSOPEN(*$$;$){
+  my($handle, $file, $mode, $perms) = @_;
+  $perms ||= 0777;
+
+  #We don't use O_EXCL because sysopen's failure is not trappable
+  prompt($file) if -e $file && $mode&(O_WRONLY|O_RDWR|O_TRUNC);
+
+  #no strict 'refs';
+  CORE::sysopen(*{caller(0) . '::' . $handle}, $file, $mode, $perms);
+}
+
+sub prompt{
+  my $clobber = 0;
+
+  return if (caller 1)[10]->{clobber};
+
+  if( -t STDIN && exists($INC{'Term/ReadKey.pm'}) ){
+
+    select(STDERR); local $|=1;
+    print STDERR "Allow modification of '$_[0]'? [yN] ";
+
+    Term::ReadKey::ReadMode('cbreak'); $clobber = Term::ReadKey::ReadKey(0);
+
+    Term::ReadKey::ReadMode('restore'); print STDERR "\n";
+
+    $clobber =~ y/yY/1/; $clobber =~ y/1/0/c;
+  }
+
+  croak "$_[0]: File exists" unless $clobber;
+}
+
+
 1;
 __END__
-               As a special case the 3-arg form with a read/write mode and the
-               third argument being "undef":
 
 =pod
 
@@ -84,8 +114,11 @@ clobber - pragma to optionally prevent over-writing files
 Do you occasionally get C<+E<gt>> and C<+E<lt>> mixed up, or accidentally
 leave off an E<gt> in the mode of an C<open>? Want to run some relatively
 trustworthy code--such as some spaghetti monster you created in the days
-of yore--but can't be bothered to check it's semantics? Then this pragma
-could help you from blowing away valuable data.
+of yore--but can't be bothered to check it's semantics? Or perhaps you'd
+like to add a level of protection to operations on user-supplied files
+without coding the logic yourself.
+
+Yes? Then this pragma could help you from blowing away valuable data.
 
 Like the I<noclobber> variable of some shells, this module will prevent
 the use of open modes which truncate if a file already exists. This behavior
@@ -97,7 +130,7 @@ The pragma may throw the following exceptions:
 
 =over
 
-=item %s: File exists.
+=item %s: File exists
 
 We saved data!
 
@@ -128,13 +161,9 @@ but more thorough testing of mode-parsing and/or invocation needs to be done.
 
 Interactive ask to run the more complex tests, with timeout to skip them.
 
-=item interactive mode
+=item wrap other data-damaging functions such as unlink and truncate?
 
-Prompt for permission to clobber with Term::ReadKey
-
-=item sysopen
-
-Should be easier? No parsing, just twiddle the bits of bad modes
+as optional "imports"
 
 =back
 
