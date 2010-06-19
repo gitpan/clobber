@@ -3,4 +3,6 @@ MANIFEST
 Makefile.PL
 README
 lib/clobber.pm
+t/01-loads.t
+t/02-basic.t
 META.yml                                 Module meta-data (added by MakeMaker)

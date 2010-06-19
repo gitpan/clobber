@@ -1,5 +1,13 @@
 Revision history for Perl extension Clobber.
 
+0.10  2010-06-
+      Document exactly what the module does.
+
+      Add lax protection option to permit modes that do not automatically
+      clobber files, but may still allow data to overwritten.
+
+      Remove MakeMaker's stupid 'use 5.010000;' from Makefile.PL
+
 0.04  2010-06-17
       Corrected sysopen default permissions to match core sysopen.
 

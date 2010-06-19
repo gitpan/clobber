@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                clobber
-version:             0.04
+version:             0.101
 abstract:            pragma to optionally prevent over-writing files
 license:             ~
 author:              
